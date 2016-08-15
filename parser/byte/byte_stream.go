@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-
-	"github.com/joeshaw/gengen/generic"
 )
 
 type byteStream struct {
@@ -57,7 +55,7 @@ func (bs *byteStream) Position() interface{} {
 	return fmt.Sprintf("%s:%d:%d", bs.sourceName, bs.line, bs.col)
 }
 
-func (bs *byteStream) Token() generic.T {
+func (bs *byteStream) Token() byte {
 	return bs.b
 }
 

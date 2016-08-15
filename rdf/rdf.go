@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	p "github.com/dgraph-io/dgraph/parser"
+	p "github.com/dgraph-io/dgraph/parser/byte"
 	"github.com/dgraph-io/dgraph/uid"
 )
 

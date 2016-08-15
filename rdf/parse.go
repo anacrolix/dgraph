@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"unicode"
 
-	p "github.com/dgraph-io/dgraph/parser"
+	p "github.com/dgraph-io/dgraph/parser/byte"
 )
 
 var pSubject = p.OneOf{pIriRef, pBNLabel}
@@ -28,7 +28,7 @@ func pStringUntilByte(b byte) p.Parser {
 	return p.ParseFunc(func(c p.Context) p.Context {
 		var v []byte
 		for c.Stream().Good() {
-			_b := c.Stream().Token().(byte)
+			_b := c.Stream().Token()
 			if _b == b {
 				break
 			}
@@ -55,7 +55,7 @@ var pEChar = p.ParseFunc(func(c p.Context) p.Context {
 	if c.Stream().Err() != nil {
 		return c.WithError(fmt.Errorf("incomplete echar: %s", c.Stream().Err()))
 	}
-	s, err := strconv.Unquote(`"\` + string(c.Stream().Token().(byte)) + `"`)
+	s, err := strconv.Unquote(`"\` + string(c.Stream().Token()) + `"`)
 	c = c.NextToken()
 	if err != nil {
 		return c.WithError(err)
@@ -117,7 +117,7 @@ func pPred(pred func(byte) bool) p.Parser {
 		if c.Stream().Err() != nil {
 			return c.WithError(c.Stream().Err())
 		}
-		_b := c.Stream().Token().(byte)
+		_b := c.Stream().Token()
 		if pred(_b) {
 			return c.WithValue(_b).NextToken()
 		}
@@ -130,7 +130,7 @@ func pByte(b byte) p.Parser {
 		if c.Stream().Err() != nil {
 			return c.WithError(c.Stream().Err())
 		}
-		_b := c.Stream().Token().(byte)
+		_b := c.Stream().Token()
 		if _b != b {
 			return c.WithError(fmt.Errorf("expected %q but got %q", b, _b))
 		}
@@ -163,7 +163,7 @@ func predStar(pred func(b byte) bool) p.Parser {
 	return p.ParseFunc(func(c p.Context) p.Context {
 		v := ""
 		for c.Stream().Err() == nil {
-			_b := c.Stream().Token().(byte)
+			_b := c.Stream().Token()
 			if !pred(_b) {
 				break
 			}
@@ -193,7 +193,7 @@ func pBytes(bs string) p.Parser {
 			if err := c.Stream().Err(); err != nil {
 				return c.WithError(fmt.Errorf("expected %q but got %s", b, err))
 			}
-			_b := c.Stream().Token().(byte)
+			_b := c.Stream().Token()
 			if _b != b {
 				return c.WithError(fmt.Errorf("expected %q but saw %q", b, _b))
 			}
