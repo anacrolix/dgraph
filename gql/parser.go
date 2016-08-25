@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 
@@ -48,6 +47,25 @@ type GraphQuery struct {
 type Mutation struct {
 	Set string
 	Del string
+}
+
+func (m *Mutation) Parse(c *p.Context) {
+	for {
+		c.Parse(wsnl)
+		if c.ConsumeToken('{') {
+			break
+		}
+		w := p.Regexp(`(set|delete)`)
+		c.Parse(w)
+		s := p.Regexp(`(.*)}`)
+		c.Parse(s)
+		switch w.Submatches[0] {
+		case "set":
+			m.Set = s.Submatches[0]
+		case "delete":
+			m.Del = s.Submatches[0]
+		}
+	}
 }
 
 // pair denotes the key value pair that is part of the GraphQL query root in parenthesis.
@@ -129,28 +147,9 @@ func gqFromSel(sel Selection) (gq *GraphQuery) {
 	for _, sel := range sel.Selections {
 		gq.Children = append(gq.Children, gqFromSel(sel))
 	}
-	for _, arg := range sel.Args {
-		switch arg.Name {
-		case first:
-			i, err := strconv.ParseInt(string(arg.Value), 0, 0)
-			if err != nil {
-				panic(unmarshalError{fmt.Errorf(`error parsing %q argument's value: %s`, first, err)})
-			}
-			gq.First = int(i)
-		case offset:
-			i, err := strconv.ParseUint(string(arg.Value), 0, 0)
-			if err != nil {
-				panic(unmarshalError{fmt.Errorf(`error parsing %q argument's value: %s`, offset, err)})
-			}
-			gq.Offset = int(i)
-		case after:
-			i, err := strconv.ParseUint(string(arg.Value), 0, 0)
-			if err != nil {
-				panic(unmarshalError{fmt.Errorf(`error parsing %q argument's value: %s`, after, err)})
-			}
-			gq.After = uint64(i)
-		}
-	}
+	gq.First = sel.Args.First
+	gq.Offset = sel.Args.Offset
+	gq.After = sel.Args.After
 	return
 }
 
@@ -166,29 +165,8 @@ func Parse(input string) (gq *GraphQuery, mu *Mutation, err error) {
 	if err != nil {
 		return
 	}
-	qOp, err := doc.query()
-	if err != nil {
-		return
-	}
-	log.Print(qOp)
-	if qOp != nil {
-		func() {
-			defer func() {
-				r := recover()
-				if r == nil {
-					return
-				}
-				ue, ok := r.(unmarshalError)
-				if !ok {
-					panic(r)
-				}
-				err = ue
-			}()
-			gq = gqFromSel(qOp.Selection)
-		}()
-		if err != nil {
-			return
-		}
+	if doc.Query != nil {
+		gq = gqFromSel(doc.Query.Selection)
 	}
 	// if gq != nil {
 	// 	// Try expanding fragments using fragment map.

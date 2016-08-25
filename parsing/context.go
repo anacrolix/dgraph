@@ -19,6 +19,14 @@ type Context struct {
 	p      Parser
 }
 
+func (me *Context) ConsumeToken(t generic.T) bool {
+	if me.s.Err() == nil && me.s.Token() == t {
+		me.Advance()
+		return true
+	}
+	return false
+}
+
 func (me *Context) Stream() Stream {
 	return me.s
 }

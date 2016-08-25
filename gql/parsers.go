@@ -2,6 +2,7 @@ package gql
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -35,34 +36,39 @@ func (whitespace) Parse(c *p.Context) {
 }
 
 type Document struct {
-	Operations []Operation
-	// Fragments  []Fragment
-}
-
-func (d *Document) query() (ret *Operation, err error) {
-	for _, op := range d.Operations {
-		if op.Type == query || op.Type == "" {
-			if ret != nil {
-				err = errors.New("document contains multiple query operations")
-				return
-			}
-			ret = &op
-		}
-	}
-	return
+	Query    *Query
+	Mutation *Mutation
 }
 
 func (d *Document) Parse(c *p.Context) {
-	d.Operations = nil
 	for {
-		c.Parse(whitespace{})
-		if c.Stream().Err() != nil {
-			return
+		c.Parse(wsnl)
+		if !c.Good() {
+			break
 		}
-		var op Operation
-		c.Parse(&op)
-		d.Operations = append(d.Operations, op)
+		r := p.Regexp("(|query|mutation)")
+		c.Parse(r)
+		switch r.Submatches[0] {
+		case "", "query":
+			if d.Query != nil {
+				c.Fatal(errors.New("more than one query in document"))
+			}
+			d.Query = new(Query)
+			c.Parse(d.Query)
+		case "mutation":
+			if d.Mutation != nil {
+				c.Fatal(errors.New("more than one mutation in document"))
+			}
+			d.Mutation = new(Mutation)
+			c.Parse(d.Mutation)
+		default:
+			panic(r.Submatches)
+		}
 	}
+}
+
+type Query struct {
+	Operation
 }
 
 type Operation struct {
@@ -144,10 +150,15 @@ func (f *Field) Parse(c *p.Context) {
 	c.Parse(&f.Name, p.Maybe(ws, &f.Args), p.Maybe(ws, &f.Selections))
 }
 
-type Arguments []Argument
+type Arguments struct {
+	Normal []Argument
+	First  int
+	Offset int
+	After  uint64
+}
 
 func (args *Arguments) Parse(c *p.Context) {
-	*args = nil
+	args.Normal = nil
 	c.Parse(p.Byte('('))
 	c.ParseErr(whitespace{})
 	for {
@@ -155,7 +166,28 @@ func (args *Arguments) Parse(c *p.Context) {
 		if !c.TryParse(&arg) {
 			break
 		}
-		*args = append(*args, arg)
+		switch arg.Name {
+		case first:
+			i, err := strconv.ParseInt(string(arg.Value), 0, 0)
+			if err != nil {
+				c.Fatal(err)
+			}
+			args.First = int(i)
+		case offset:
+			i, err := strconv.ParseUint(string(arg.Value), 0, 0)
+			if err != nil {
+				c.Fatal(err)
+			}
+			args.Offset = int(i)
+		case after:
+			i, err := strconv.ParseUint(string(arg.Value), 0, 0)
+			if err != nil {
+				c.Fatal(err)
+			}
+			args.After = uint64(i)
+		default:
+			args.Normal = append(args.Normal, arg)
+		}
 		c.ParseErr(whitespace{})
 		if !c.TryParse(p.Byte(',')) {
 			break

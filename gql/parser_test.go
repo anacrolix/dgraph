@@ -90,7 +90,7 @@ func TestSelection(t *testing.T) {
 	assert.NoError(t, testParser(t, &sel, "me(_uid_:0x0a)"))
 	assert.Len(t, sel.Selections, 0)
 	assert.EqualValues(t, "me", sel.Name)
-	assert.EqualValues(t, Argument{"_uid_", "0x0a"}, sel.Args[0])
+	assert.EqualValues(t, Argument{"_uid_", "0x0a"}, sel.Args.Normal[0])
 
 	assert.NoError(t, testParser(t, &sel, `me {
 			friends
@@ -107,8 +107,8 @@ func TestSelection(t *testing.T) {
 			friends
 			romans
 		}`))
-	assert.Len(t, sel.Args, 1)
-	assert.EqualValues(t, Argument{"a", "b"}, sel.Args[0])
+	assert.Len(t, sel.Args.Normal, 1)
+	assert.EqualValues(t, Argument{"a", "b"}, sel.Args.Normal[0])
 	assert.Len(t, sel.Selections, 2)
 }
 

@@ -20,13 +20,15 @@ func TestParsers(t *testing.T) {
 	testParse(&sel, `friends (first: 10, after: 3) {
             }`)
 	assert.EqualValues(t, "friends", sel.Name)
-	assert.EqualValues(t, Arguments{Argument{"first", "10"}, {"after", "3"}}, sel.Args)
+	assert.Len(t, sel.Args.Normal, 0)
+	assert.EqualValues(t, 10, sel.Args.First)
+	assert.EqualValues(t, 3, sel.Args.After)
 
 	testParse(p.Seq{p.Maybe(wsnl), &sel}, `
     friends(xid:what) {  # xid would be ignored.
                 }`)
 	assert.EqualValues(t, "friends", sel.Name)
-	assert.EqualValues(t, Arguments{Argument{"xid", "what"}}, sel.Args)
+	assert.EqualValues(t, []Argument{{"xid", "what"}}, sel.Args.Normal)
 
 	var ss SelectionSet
 	testParse(p.Seq{p.Maybe(wsnl), &ss}, `{
