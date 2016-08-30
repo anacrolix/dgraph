@@ -50,6 +50,10 @@ type re struct {
 	Submatches []string
 }
 
+func (re re) Name() string {
+	return fmt.Sprintf("re: %q", re.re.String())
+}
+
 type streamRuneReader struct {
 	s Stream
 }

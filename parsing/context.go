@@ -13,7 +13,6 @@ func NewContext(s Stream) *Context {
 }
 
 type Context struct {
-	errs   []Error
 	s      Stream
 	Parent *Context
 	p      Parser
@@ -52,8 +51,6 @@ func (me *Context) parse(p Parser, c *Context) {
 	// 	panic(fmt.Sprintf("operation did not advance stream: %v", ParserName(c.p)))
 	// }
 	me.s = c.s
-	me.errs = append(me.errs, c.errs...)
-	c.errs = nil
 }
 
 func (me *Context) newChild(p Parser) *Context {
@@ -66,11 +63,7 @@ func (me *Context) newChild(p Parser) *Context {
 
 func (me *Context) TryParse(ps ...Parser) bool {
 	err := me.ParseErr(ps...)
-	if err != nil {
-		me.errs = append(me.errs, err.(Error))
-		return false
-	}
-	return true
+	return err == nil
 }
 
 func (me *Context) Parse(ps ...Parser) {

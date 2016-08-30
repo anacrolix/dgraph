@@ -31,13 +31,33 @@ var inlineSpace = p.Pred(func(b byte) bool {
 
 type whitespace struct{}
 
-func (whitespace) Parse(c *p.Context) {
-	c.Parse(p.Star(p.OneOf(comment{}, inlineSpace, newline)))
+func (me whitespace) Parse(c *p.Context) {
+	for {
+		if !c.Good() {
+			return
+		}
+		if c.TryParse(comment{}) {
+			continue
+		}
+		r := rune(c.Token().(byte))
+		if !unicode.IsSpace(r) {
+			return
+		}
+		c.Advance()
+	}
 }
 
 type Document struct {
 	Query    *Query
 	Mutation *Mutation
+}
+
+func (d *Document) parseQuery(c *p.Context) {
+	if d.Query != nil {
+		c.Fatal(errors.New("more than one query in document"))
+	}
+	d.Query = new(Query)
+	c.Parse(d.Query)
 }
 
 func (d *Document) Parse(c *p.Context) {
@@ -46,16 +66,19 @@ func (d *Document) Parse(c *p.Context) {
 		if !c.Good() {
 			break
 		}
-		r := p.Regexp("(|query|mutation)")
+		if c.Token().(byte) == '{' {
+			d.parseQuery(c)
+			continue
+		}
+		if c.ConsumeToken('}') {
+			break
+		}
+		r := p.Regexp("(query|mutation)")
 		c.Parse(r)
 		switch r.Submatches[0] {
-		case "", "query":
-			if d.Query != nil {
-				c.Fatal(errors.New("more than one query in document"))
-			}
-			d.Query = new(Query)
-			c.Parse(d.Query)
-		case "mutation":
+		case query:
+			d.parseQuery(c)
+		case mutation:
 			if d.Mutation != nil {
 				c.Fatal(errors.New("more than one mutation in document"))
 			}
@@ -68,10 +91,6 @@ func (d *Document) Parse(c *p.Context) {
 }
 
 type Query struct {
-	Operation
-}
-
-type Operation struct {
 	Type       string
 	Name       string
 	Variables  struct{}
@@ -79,16 +98,7 @@ type Operation struct {
 	Selection  Selection
 }
 
-func (op *Operation) Parse(c *p.Context) {
-	oo := p.OneOf(p.Bytes(query), p.Bytes(mutation))
-	if c.TryParse(oo) {
-		switch oo.Index {
-		case 0:
-			op.Type = query
-		case 1:
-			op.Type = mutation
-		}
-	}
+func (op *Query) Parse(c *p.Context) {
 	c.Parse(whitespace{})
 	c.Parse(p.Byte('{'))
 	c.Parse(whitespace{})

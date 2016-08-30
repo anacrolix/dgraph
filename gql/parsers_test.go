@@ -36,4 +36,7 @@ func TestParsers(t *testing.T) {
                 friends(xid:what) {  # xid would be ignored.
                 }
             }`)
+
+	var m Mutation
+	testParse(&m, "\n{\n set\n{  \n} }")
 }

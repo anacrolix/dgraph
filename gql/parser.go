@@ -50,14 +50,16 @@ type Mutation struct {
 }
 
 func (m *Mutation) Parse(c *p.Context) {
+	c.Parse(wsnl)
+	c.Parse(p.Byte('{'))
 	for {
 		c.Parse(wsnl)
-		if c.ConsumeToken('{') {
+		if c.ConsumeToken('}') {
 			break
 		}
-		w := p.Regexp(`(set|delete)`)
-		c.Parse(w)
-		s := p.Regexp(`(.*)}`)
+		w := p.Regexp(`(set|delete)\b`)
+		c.Parse(w, wsnl)
+		s := p.Regexp(`\{([^}]*)\}`)
 		c.Parse(s)
 		switch w.Submatches[0] {
 		case "set":
